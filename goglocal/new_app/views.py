@@ -1,36 +1,39 @@
 from django.shortcuts import render
 from rest_framework.views import APIView
-# from rest_framework.generics import GenericAPIView
+from rest_framework.generics import GenericAPIView, RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_200_OK
-from new_app.serializers import LoginSerializer
-from rest_framework_simplejwt.tokens import RefreshToken
-# from new_app.models import User
-from django.contrib.auth.models import User
-from django.contrib.auth.hashers import check_password
+from new_app.serializers import LoginSerializer, ProfileSerializer
+from new_app.models import User
+# from django.contrib.auth.models import User
+from new_app.utils import SerializerResponses, get_login_user_data
+from django.contrib.auth import authenticate
 
 # Create your views here.
 
-class Login(APIView):
-    # serializer_class = LoginSerializer
+class Login(GenericAPIView):
+    serializer_class = LoginSerializer
     permission_classes = (AllowAny,)
     
     def post(self, request):
-        # serialiser = self.serializer_class(data=request.data)
-        # if not serialiser.is_valid():
-        #     return Response(data=serialiser.error_messages, status=HTTP_400_BAD_REQUEST)
-        user = User.objects.filter(username=request.data['username']).first()
-        if not user:
-            return Response(status=HTTP_400_BAD_REQUEST, data={"message": "Invalid request"})
-        if not check_password(request.data['password'], user.password):
-            return Response(status=HTTP_400_BAD_REQUEST, data={"message": "Invalid request"})
-        refresh = RefreshToken.for_user(user)
-        return Response(data={"token":str(refresh.access_token)},status=HTTP_200_OK)
+        validate_serializer = self.serializer_class(data=request.data)
+        if not validate_serializer.is_valid():
+            return SerializerResponses().call(validate_serializer.errors)
+
+        user = authenticate(**request.data)
+        if user:
+            return Response(get_login_user_data(user))
         
 
-class Profile(APIView):
+class Profile(RetrieveAPIView):
+    serializer_class = ProfileSerializer
     permission_classes = (IsAuthenticated,)
-    
+    queryset = User.objects.all()
+
+    def get_queryset(self):
+        return super().get_queryset().filter(user=self.request.user).first()
+
     def get(self, request):
-        return Response()
+        serializer = self.get_serializer(self.get_queryset())
+        return Response(data=serializer.data, status=HTTP_200_OK)

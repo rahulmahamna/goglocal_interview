@@ -50,13 +50,15 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'new_app.middelware.CustomMiddleware',
 ]
+
+AUTH_USER_MODEL = "new_app.User"
 
 REST_FRAMEWORK = {
     # Use Django's standard `django.contrib.auth` permissions,
     # or allow read-only access for unauthenticated users.
     'DEFAULT_PERMISSION_CLASSES': [
+        'new_app.middelware.CustomAuthMiddleware',
         'rest_framework_simplejwt.authentication.JWTAuthentication'
     ]
 }
